@@ -9,6 +9,7 @@ import (
 	"bufio"
 	"compress/bzip2"
 	"compress/gzip"
+	"errors"
 	"io"
 	"os"
 
@@ -70,6 +71,9 @@ func NewReader(r io.Reader) (*ZReader, error) {
 func fromBufferedReader(uncompressed *bufio.Reader) (*ZReader, error) {
 	magicBlock, e := uncompressed.Peek(magicBytePrefixSize)
 	if e != nil {
+		if errors.Is(e, io.EOF) {
+			return &ZReader{zType: zNone, decompressor: io.NopCloser(uncompressed)}, nil
+		}
 		return nil, e
 	}
 
