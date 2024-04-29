@@ -6,6 +6,7 @@ require (
 	github.com/klauspost/compress v1.17.8
 	github.com/pierrec/lz4/v4 v4.1.21
 	github.com/stretchr/testify v1.9.0
+	github.com/ulikunitz/xz v0.5.12
 )
 
 require (

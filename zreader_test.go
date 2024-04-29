@@ -21,6 +21,7 @@ func TestZReader(t *testing.T) {
 		"testdata/zreader.txt.gz",
 		"testdata/zreader.txt.zlib",
 		"testdata/zreader.txt.lz4",
+		"testdata/zreader.txt.xz",
 	}
 	for _, zf := range zfiles {
 		t.Run(zf, func(t *testing.T) {
