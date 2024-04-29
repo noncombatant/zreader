@@ -102,7 +102,7 @@ func (r *ZReader) Read(p []byte) (int, error) {
 	return r.decompressor.Read(p)
 }
 
-// Close closes the ZReader, will close the underlying reader if it has one.
+// Close closes the ZReader, and will close the underlying reader if it has one.
 func (r *ZReader) Close() error {
 	if e := r.decompressor.Close(); e != nil {
 		return e
