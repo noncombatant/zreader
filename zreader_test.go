@@ -6,8 +6,9 @@ package zreader
 import (
 	"io"
 	"os"
-	"slices"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestZReader(t *testing.T) {
@@ -23,16 +24,10 @@ func TestZReader(t *testing.T) {
 	for _, zf := range zfiles {
 		t.Run(zf, func(t *testing.T) {
 			reader, e := Open(zf)
-			if e != nil {
-				t.Error(e)
-			}
+			assert.Nil(t, e)
 			bytes, e := io.ReadAll(reader)
-			if e != nil {
-				t.Error(e)
-			}
-			if !slices.Equal(expected, bytes) {
-				t.Errorf("%q was wrong!", zf)
-			}
+			assert.Nil(t, e)
+			assert.Equal(t, expected, bytes)
 		})
 	}
 }
