@@ -6,12 +6,11 @@
 package zreader
 
 import (
+	"bufio"
 	"compress/bzip2"
 	"compress/gzip"
 	"io"
 	"os"
-	"path/filepath"
-	"strings"
 
 	"github.com/klauspost/compress/zstd"
 )
@@ -36,82 +35,86 @@ const (
 //
 // It currently supports bzip2, gzip, and zstd.
 type ZReader struct {
-	file *os.File
 	zType
-	bzip2Reader io.Reader
-	gzipReader  *gzip.Reader
-	zstdDecoder *zstd.Decoder
+
+	decompressor io.ReadCloser
+
+	fileCloser io.Closer
 }
 
-// Open opens pathname and returns an appropriate ZReader. It selects a
-// decompressor based on pathname's file extension. If it does not have a
-// decompressor to match the extension, subsequent calls to [Read] will return
-// the raw bytes of the file. (That might, or might not, be what you want.)
+// Open opens pathname and returns an appropriate ZReader. See [NewReader] for
+// guidance on its behavior.
 func Open(pathname string) (*ZReader, error) {
 	file, e := os.Open(pathname)
 	if e != nil {
 		return nil, e
 	}
 
-	reader := &ZReader{file: file}
+	zr, err := NewReader(file)
+	if err != nil {
+		if closeErr := file.Close(); closeErr != nil {
+			return nil, closeErr
+		}
 
-	fileType := strings.ToLower(filepath.Ext(pathname))
-	switch fileType {
-	case ".bz2":
-		reader.zType = zBzip2
-		reader.bzip2Reader = bzip2.NewReader(reader.file)
-	case ".gz":
-		reader.zType = zGzip
-		r, e := gzip.NewReader(reader.file)
+		return nil, err
+	}
+	zr.fileCloser = file
+
+	return zr, nil
+}
+
+// NewReader returns a ZReader for the given io.ReadCloser. It selects a
+// decompressor based on the first few bytes of data. If it does not have a
+// decompressor to match the bytes, subsequent calls to [Read] will return the
+// raw bytes of the reader. (That might, or might not, be what you want.)
+func NewReader(r io.Reader) (*ZReader, error) {
+	return fromBufferedReader(bufio.NewReader(r))
+}
+
+func fromBufferedReader(uncompressed *bufio.Reader) (*ZReader, error) {
+	magicBlock, err := uncompressed.Peek(magicBytePrefixSize)
+	if err != nil {
+		return nil, err
+	}
+
+	switch zTypeFromBytes(magicBlock) {
+	case zBzip2:
+		return &ZReader{zType: zBzip2, decompressor: io.NopCloser(bzip2.NewReader(uncompressed))}, nil
+	case zGzip:
+		r, e := gzip.NewReader(uncompressed)
 		if e != nil {
-			reader.file.Close()
 			return nil, e
 		}
-		reader.gzipReader = r
-	case ".zip":
-		reader.zType = zZip
+
+		return &ZReader{zType: zGzip, decompressor: r}, nil
+	case zZip:
 		// TODO
-	case ".zstd":
-		reader.zType = zZstd
-		d, e := zstd.NewReader(reader.file)
+		return &ZReader{zType: zZip, decompressor: io.NopCloser(uncompressed)}, nil
+	case zZstd:
+		d, e := zstd.NewReader(uncompressed)
 		if e != nil {
-			reader.file.Close()
 			return nil, e
 		}
-		reader.zstdDecoder = d
+		return &ZReader{zType: zZstd, decompressor: io.NopCloser(d)}, nil
 	default:
-		reader.zType = zNone
+		return &ZReader{zType: zNone, decompressor: io.NopCloser(uncompressed)}, nil
 	}
-	return reader, nil
 }
 
-// Read reads up to len(bytes) from the File and stores them in bytes. It
-// returns the number of bytes read and any error encountered. At end of file,
-// Read returns 0, io.EOF.
-func (zr *ZReader) Read(bytes []byte) (n int, err error) {
-	switch zr.zType {
-	case zBzip2:
-		return zr.bzip2Reader.Read(bytes)
-	case zGzip:
-		return zr.gzipReader.Read(bytes)
-	case zZip:
-		// TODO
-	case zZstd:
-		return zr.zstdDecoder.Read(bytes)
-	}
-	return zr.file.Read(bytes)
+// Read reads from the appropriate decompressor.
+func (z *ZReader) Read(p []byte) (int, error) {
+	return z.decompressor.Read(p)
 }
 
-// Close closes zr, rendering it unusable for I/O. Close will return an error if
-// it has already been called.
-func (zr *ZReader) Close() error {
-	switch zr.zType {
-	case zNone:
-	case zBzip2:
-	case zGzip:
-		zr.gzipReader.Close()
-	case zZip:
-	case zZstd:
+// Close closes the ZReader, will close the underlying reader if it has one.
+func (z *ZReader) Close(p []byte) error {
+	if err := z.decompressor.Close(); err != nil {
+		return err
 	}
-	return zr.file.Close()
+
+	if z.fileCloser != nil {
+		return z.fileCloser.Close()
+	}
+
+	return nil
 }
