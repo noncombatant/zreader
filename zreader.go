@@ -20,6 +20,8 @@ import (
 // TODO: Support all of: compress/{bzip2,flate,gzip,lzw,zlib}.
 //
 // TODO: Consider using more or all of the klauspost implementations.
+//
+// TODO: Add an OpenWithType.
 
 type zType int
 
@@ -36,13 +38,9 @@ const (
 // It currently supports bzip2, gzip, and zstd.
 type ZReader struct {
 	zType
-
 	decompressor io.ReadCloser
-
-	fileCloser io.Closer
+	fileCloser   io.Closer
 }
-
-// TODO: Add an OpenWithType
 
 // Open opens pathname and returns an appropriate ZReader. See [NewReader] for
 // guidance on its behavior.
@@ -52,17 +50,13 @@ func Open(pathname string) (*ZReader, error) {
 		return nil, e
 	}
 
-	zr, err := NewReader(file)
-	if err != nil {
-		if closeErr := file.Close(); closeErr != nil {
-			return nil, closeErr
-		}
-
-		return nil, err
+	r, e := NewReader(file)
+	if e != nil {
+		file.Close()
+		return nil, e
 	}
-	zr.fileCloser = file
-
-	return zr, nil
+	r.fileCloser = file
+	return r, nil
 }
 
 // NewReader returns a ZReader for the given io.ReadCloser. It selects a
@@ -74,9 +68,9 @@ func NewReader(r io.Reader) (*ZReader, error) {
 }
 
 func fromBufferedReader(uncompressed *bufio.Reader) (*ZReader, error) {
-	magicBlock, err := uncompressed.Peek(magicBytePrefixSize)
-	if err != nil {
-		return nil, err
+	magicBlock, e := uncompressed.Peek(magicBytePrefixSize)
+	if e != nil {
+		return nil, e
 	}
 
 	switch zTypeFromBytes(magicBlock) {
@@ -104,18 +98,18 @@ func fromBufferedReader(uncompressed *bufio.Reader) (*ZReader, error) {
 }
 
 // Read reads from the appropriate decompressor.
-func (z *ZReader) Read(p []byte) (int, error) {
-	return z.decompressor.Read(p)
+func (r *ZReader) Read(p []byte) (int, error) {
+	return r.decompressor.Read(p)
 }
 
 // Close closes the ZReader, will close the underlying reader if it has one.
-func (z *ZReader) Close(p []byte) error {
-	if err := z.decompressor.Close(); err != nil {
+func (r *ZReader) Close() error {
+	if err := r.decompressor.Close(); err != nil {
 		return err
 	}
 
-	if z.fileCloser != nil {
-		return z.fileCloser.Close()
+	if r.fileCloser != nil {
+		return r.fileCloser.Close()
 	}
 
 	return nil
