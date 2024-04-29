@@ -20,16 +20,18 @@ func TestZReader(t *testing.T) {
 		"test-data/zreader.txt.gz",
 	}
 	for _, zf := range zfiles {
-		reader, e := Open(zf)
-		if e != nil {
-			t.Error(e)
-		}
-		bytes, e := io.ReadAll(reader)
-		if e != nil {
-			t.Error(e)
-		}
-		if !slices.Equal(expected, bytes) {
-			t.Errorf("%q was wrong!", zf)
-		}
+		t.Run(zf, func(t *testing.T) {
+			reader, e := Open(zf)
+			if e != nil {
+				t.Error(e)
+			}
+			bytes, e := io.ReadAll(reader)
+			if e != nil {
+				t.Error(e)
+			}
+			if !slices.Equal(expected, bytes) {
+				t.Errorf("%q was wrong!", zf)
+			}
+		})
 	}
 }
