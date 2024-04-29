@@ -16,6 +16,7 @@ func TestZReader(t *testing.T) {
 		t.Error(e)
 	}
 	zfiles := []string{
+		"test-data/zreader.txt",
 		"test-data/zreader.txt.bz2",
 		"test-data/zreader.txt.gz",
 	}
