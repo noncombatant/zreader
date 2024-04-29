@@ -16,9 +16,9 @@ func TestZReader(t *testing.T) {
 	assert.Nil(t, e)
 
 	zfiles := []string{
-		"test-data/zreader.txt",
-		"test-data/zreader.txt.bz2",
-		"test-data/zreader.txt.gz",
+		"testdata/zreader.txt",
+		"testdata/zreader.txt.bz2",
+		"testdata/zreader.txt.gz",
 	}
 	for _, zf := range zfiles {
 		t.Run(zf, func(t *testing.T) {
