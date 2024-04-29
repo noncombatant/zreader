@@ -38,6 +38,8 @@ type ZReader struct {
 	zType
 
 	decompressor io.ReadCloser
+
+	fileCloser io.Closer
 }
 
 // Open opens pathname and returns an appropriate ZReader. See [NewReader] for
@@ -56,6 +58,7 @@ func Open(pathname string) (*ZReader, error) {
 
 		return nil, err
 	}
+	zr.fileCloser = file
 
 	return zr, nil
 }
@@ -105,5 +108,13 @@ func (z *ZReader) Read(p []byte) (int, error) {
 
 // Close closes the ZReader, will close the underlying reader if it has one.
 func (z *ZReader) Close(p []byte) error {
-	return z.decompressor.Close()
+	if err := z.decompressor.Close(); err != nil {
+		return err
+	}
+
+	if z.fileCloser != nil {
+		return z.fileCloser.Close()
+	}
+
+	return nil
 }
