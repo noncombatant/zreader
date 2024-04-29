@@ -13,6 +13,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/klauspost/compress/zlib"
 	"github.com/klauspost/compress/zstd"
 )
 
@@ -32,6 +33,7 @@ const (
 	zGzip
 	zZip
 	zZstd
+	zZlib
 )
 
 // ZReader is an [io.ReadCloser] that reads compressed files.
@@ -96,6 +98,12 @@ func fromBufferedReader(uncompressed *bufio.Reader) (*ZReader, error) {
 			return nil, e
 		}
 		return &ZReader{zType: zZstd, decompressor: io.NopCloser(d)}, nil
+	case zZlib:
+		r, e := zlib.NewReader(uncompressed)
+		if e != nil {
+			return nil, e
+		}
+		return &ZReader{zType: zZlib, decompressor: r}, nil
 	default:
 		return &ZReader{zType: zNone, decompressor: io.NopCloser(uncompressed)}, nil
 	}
