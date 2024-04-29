@@ -42,6 +42,8 @@ type ZReader struct {
 	fileCloser io.Closer
 }
 
+// TODO: Add an OpenWithType
+
 // Open opens pathname and returns an appropriate ZReader. See [NewReader] for
 // guidance on its behavior.
 func Open(pathname string) (*ZReader, error) {
