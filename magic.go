@@ -11,8 +11,8 @@ var (
 	magicZipEmptyArchive   = []byte{0x50, 0x4b, 0x05, 0x06}
 	magicZipSpannedArchive = []byte{0x50, 0x4b, 0x07, 0x08}
 	magicZstd              = []byte{0x28, 0xb5, 0x2f, 0xfd}
-	magicLz4Frame          = []byte{0x04, 0x22, 0x4d, 0x18}
-	magicXz                = []byte{0xfd, 0x37, 0x7a, 0x58, 0x5a, 0x00}
+	magicLZ4Frame          = []byte{0x04, 0x22, 0x4d, 0x18}
+	magicXZ                = []byte{0xfd, 0x37, 0x7a, 0x58, 0x5a, 0x00}
 
 	magicZlibNoComp          = []byte{0x78, 0x01}
 	magicZlibBestSpeed       = []byte{0x78, 0x5e}
@@ -36,10 +36,10 @@ func zTypeFromBytes(magic []byte) zType {
 		return zZip
 	case bytes.HasPrefix(magic, magicZstd):
 		return zZstd
-	case bytes.HasPrefix(magic, magicLz4Frame):
-		return zLz4Frame
-	case bytes.HasPrefix(magic, magicXz):
-		return zXz
+	case bytes.HasPrefix(magic, magicLZ4Frame):
+		return zLZ4Frame
+	case bytes.HasPrefix(magic, magicXZ):
+		return zXZ
 	case bytes.HasPrefix(magic, magicZlibNoComp),
 		bytes.HasPrefix(magic, magicZlibBestSpeed),
 		bytes.HasPrefix(magic, magicZlibDefault),
