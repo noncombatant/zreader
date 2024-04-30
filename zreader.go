@@ -13,7 +13,10 @@ import (
 	"io"
 	"os"
 
+	"github.com/klauspost/compress/zlib"
 	"github.com/klauspost/compress/zstd"
+	"github.com/pierrec/lz4/v4"
+	"github.com/ulikunitz/xz"
 )
 
 // TODO: https://github.com/ulikunitz/xz
@@ -32,6 +35,10 @@ const (
 	zGzip
 	zZip
 	zZstd
+	zZlib
+	zLZ4Frame
+	zLZ4Block // TODO: Can't use a magic byte approach for this
+	zXZ
 )
 
 // ZReader is an [io.ReadCloser] that reads compressed files.
@@ -96,6 +103,20 @@ func fromBufferedReader(uncompressed *bufio.Reader) (*ZReader, error) {
 			return nil, e
 		}
 		return &ZReader{zType: zZstd, decompressor: io.NopCloser(d)}, nil
+	case zLZ4Frame:
+		return &ZReader{zType: zLZ4Frame, decompressor: io.NopCloser(lz4.NewReader(uncompressed))}, nil
+	case zXZ:
+		r, e := xz.NewReader(uncompressed)
+		if e != nil {
+			return nil, e
+		}
+		return &ZReader{zType: zXZ, decompressor: io.NopCloser(r)}, nil
+	case zZlib:
+		r, e := zlib.NewReader(uncompressed)
+		if e != nil {
+			return nil, e
+		}
+		return &ZReader{zType: zZlib, decompressor: r}, nil
 	default:
 		return &ZReader{zType: zNone, decompressor: io.NopCloser(uncompressed)}, nil
 	}

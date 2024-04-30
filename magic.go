@@ -2,7 +2,7 @@ package zreader
 
 import "bytes"
 
-const magicBytePrefixSize = 4
+const magicBytePrefixSize = 6
 
 var (
 	magicBzip2             = []byte{0x42, 0x5a, 0x68}
@@ -11,6 +11,17 @@ var (
 	magicZipEmptyArchive   = []byte{0x50, 0x4b, 0x05, 0x06}
 	magicZipSpannedArchive = []byte{0x50, 0x4b, 0x07, 0x08}
 	magicZstd              = []byte{0x28, 0xb5, 0x2f, 0xfd}
+	magicLZ4Frame          = []byte{0x04, 0x22, 0x4d, 0x18}
+	magicXZ                = []byte{0xfd, 0x37, 0x7a, 0x58, 0x5a, 0x00}
+
+	magicZlibNoComp          = []byte{0x78, 0x01}
+	magicZlibBestSpeed       = []byte{0x78, 0x5e}
+	magicZlibDefault         = []byte{0x78, 0x9c}
+	magicZlibBestComp        = []byte{0x78, 0xda}
+	magicZlibNoCompPreset    = []byte{0x78, 0x20}
+	magicZlibBestSpeedPreset = []byte{0x78, 0x7d}
+	magicZlibDefaultPreset   = []byte{0x78, 0xbb}
+	magicZlibBestCompPreset  = []byte{0x78, 0xf9}
 )
 
 func zTypeFromBytes(magic []byte) zType {
@@ -25,6 +36,19 @@ func zTypeFromBytes(magic []byte) zType {
 		return zZip
 	case bytes.HasPrefix(magic, magicZstd):
 		return zZstd
+	case bytes.HasPrefix(magic, magicLZ4Frame):
+		return zLZ4Frame
+	case bytes.HasPrefix(magic, magicXZ):
+		return zXZ
+	case bytes.HasPrefix(magic, magicZlibNoComp),
+		bytes.HasPrefix(magic, magicZlibBestSpeed),
+		bytes.HasPrefix(magic, magicZlibDefault),
+		bytes.HasPrefix(magic, magicZlibBestComp),
+		bytes.HasPrefix(magic, magicZlibNoCompPreset),
+		bytes.HasPrefix(magic, magicZlibBestSpeedPreset),
+		bytes.HasPrefix(magic, magicZlibDefaultPreset),
+		bytes.HasPrefix(magic, magicZlibBestCompPreset):
+		return zZlib
 	default:
 		return zNone
 	}
