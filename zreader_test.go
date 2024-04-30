@@ -17,12 +17,12 @@ func TestZReader(t *testing.T) {
 	assert.Nil(t, e)
 
 	zfiles := []string{
+		"testdata/zreader.txt",
 		"testdata/zreader.txt.bz2",
 		"testdata/zreader.txt.gz",
 		"testdata/zreader.txt.lz4",
 		"testdata/zreader.txt.xz",
 		"testdata/zreader.txt.zlib",
-		"testdata/zreader.txt",
 	}
 	assert.True(t, sort.IsSorted(sort.StringSlice(zfiles)), "zfiles should be sorted")
 
