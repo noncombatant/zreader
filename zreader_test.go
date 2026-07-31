@@ -1,4 +1,4 @@
-// Copyright 2022 Chris Palmer, https://noncombatant.org/
+// Copyright 2024 Chris Palmer, https://noncombatant.org/
 // SPDX-License-Identifier: Apache-2.0
 
 package zreader
