@@ -1,4 +1,4 @@
-# ZReader
+# `zreader`
 
-ZReader is a Go module that provides an `io.ReadCloser` for a variety of
+`zreader` is a Go module that provides an `io.ReadCloser` for a variety of
 compression formats.
