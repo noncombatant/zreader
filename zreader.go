@@ -19,16 +19,17 @@ import (
 	"github.com/ulikunitz/xz"
 )
 
-// TODO: https://github.com/ulikunitz/xz
-//
-// TODO: Support all of: compress/{bzip2,flate,gzip,lzw,zlib}.
+// TODO: Support compress/{flate,lzw}.
 //
 // TODO: Consider using more or all of the klauspost implementations.
 //
 // TODO: Add an OpenWithType.
+//
+// TODO: Make ZType public, and test for it being correct.
 
 type zType int
 
+// TODO: Rename these TypeFoo.
 const (
 	zNone zType = iota
 	zBzip2
@@ -41,13 +42,12 @@ const (
 	zXZ
 )
 
-// ZReader is an [io.ReadCloser] that reads compressed files.
+// ZReader is an [io.ReadCloser] that decompresses and reads compressed files.
 //
 // It currently supports bzip2, gzip, and zstd.
 type ZReader struct {
 	zType
 	decompressor io.ReadCloser
-	fileCloser   io.Closer
 }
 
 // Open opens pathname and returns an appropriate ZReader. See [NewReader] for
@@ -63,7 +63,6 @@ func Open(pathname string) (*ZReader, error) {
 		file.Close()
 		return nil, e
 	}
-	r.fileCloser = file
 	return r, nil
 }
 
@@ -74,6 +73,9 @@ func Open(pathname string) (*ZReader, error) {
 func NewReader(r io.Reader) (*ZReader, error) {
 	return fromBufferedReader(bufio.NewReader(r))
 }
+
+// TODO: FromReader, FromFile, FromReadCloser, FromBufferedReader; and then use
+// them as appropriate
 
 func fromBufferedReader(uncompressed *bufio.Reader) (*ZReader, error) {
 	magicBlock, e := uncompressed.Peek(magicBytePrefixSize)
@@ -131,9 +133,6 @@ func (r *ZReader) Read(p []byte) (int, error) {
 func (r *ZReader) Close() error {
 	if e := r.decompressor.Close(); e != nil {
 		return e
-	}
-	if r.fileCloser != nil {
-		return r.fileCloser.Close()
 	}
 	return nil
 }

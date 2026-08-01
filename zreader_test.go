@@ -33,6 +33,7 @@ func TestZReader(t *testing.T) {
 			bytes, e := io.ReadAll(reader)
 			assert.Nil(t, e)
 			assert.Equal(t, expected, bytes)
+			reader.Close()
 		})
 	}
 }
@@ -46,4 +47,5 @@ func TestShort(t *testing.T) {
 	bytes, e := io.ReadAll(reader)
 	assert.Nil(t, e)
 	assert.Equal(t, expected, bytes)
+	reader.Close()
 }
