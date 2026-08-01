@@ -40,16 +40,16 @@ const (
 	TypeXZ
 )
 
-// ZReader is an [io.ReadCloser] that decompresses and reads compressed files.
+// Reader is an [io.ReadCloser] that decompresses and reads compressed files.
 // It supports the compression formats enumerated by [Type].
-type ZReader struct {
+type Reader struct {
 	Type
 	io.ReadCloser
 }
 
-// Open opens pathname and returns an appropriate ZReader. See [NewReader] for
+// Open opens pathname and returns an appropriate Reader. See [NewReader] for
 // guidance on its behavior.
-func Open(pathname string) (*ZReader, error) {
+func Open(pathname string) (*Reader, error) {
 	file, e := os.Open(pathname)
 	if e != nil {
 		return nil, e
@@ -63,70 +63,70 @@ func Open(pathname string) (*ZReader, error) {
 	return r, nil
 }
 
-// NewReader returns a ZReader for the given io.ReadCloser. It selects a
+// NewReader returns a Reader for the given io.ReadCloser. It selects a
 // ReadCloser based on the first few bytes of data. If it does not have a
 // ReadCloser to match the bytes, subsequent calls to [Read] will return the
 // raw bytes of the reader. (That might, or might not, be what you want.)
-func NewReader(r io.Reader) (*ZReader, error) {
+func NewReader(r io.Reader) (*Reader, error) {
 	return fromBufferedReader(bufio.NewReader(r))
 }
 
 // TODO: FromReader, FromFile, FromReadCloser, FromBufferedReader; and then use
 // them as appropriate
 
-func fromBufferedReader(uncompressed *bufio.Reader) (*ZReader, error) {
+func fromBufferedReader(uncompressed *bufio.Reader) (*Reader, error) {
 	magicBlock, e := uncompressed.Peek(magicBytePrefixSize)
 	if e != nil {
 		if errors.Is(e, io.EOF) {
-			return &ZReader{Type: TypeNone, ReadCloser: io.NopCloser(uncompressed)}, nil
+			return &Reader{Type: TypeNone, ReadCloser: io.NopCloser(uncompressed)}, nil
 		}
 		return nil, e
 	}
 
 	switch TypeFromBytes(magicBlock) {
 	case TypeBzip2:
-		return &ZReader{Type: TypeBzip2, ReadCloser: io.NopCloser(bzip2.NewReader(uncompressed))}, nil
+		return &Reader{Type: TypeBzip2, ReadCloser: io.NopCloser(bzip2.NewReader(uncompressed))}, nil
 	case TypeGzip:
 		r, e := gzip.NewReader(uncompressed)
 		if e != nil {
 			return nil, e
 		}
-		return &ZReader{Type: TypeGzip, ReadCloser: r}, nil
+		return &Reader{Type: TypeGzip, ReadCloser: r}, nil
 	case TypeZip:
 		// TODO
-		return &ZReader{Type: TypeZip, ReadCloser: io.NopCloser(uncompressed)}, nil
+		return &Reader{Type: TypeZip, ReadCloser: io.NopCloser(uncompressed)}, nil
 	case TypeZstd:
 		d, e := zstd.NewReader(uncompressed)
 		if e != nil {
 			return nil, e
 		}
-		return &ZReader{Type: TypeZstd, ReadCloser: io.NopCloser(d)}, nil
+		return &Reader{Type: TypeZstd, ReadCloser: io.NopCloser(d)}, nil
 	case TypeLZ4Frame:
-		return &ZReader{Type: TypeLZ4Frame, ReadCloser: io.NopCloser(lz4.NewReader(uncompressed))}, nil
+		return &Reader{Type: TypeLZ4Frame, ReadCloser: io.NopCloser(lz4.NewReader(uncompressed))}, nil
 	case TypeXZ:
 		r, e := xz.NewReader(uncompressed)
 		if e != nil {
 			return nil, e
 		}
-		return &ZReader{Type: TypeXZ, ReadCloser: io.NopCloser(r)}, nil
+		return &Reader{Type: TypeXZ, ReadCloser: io.NopCloser(r)}, nil
 	case TypeZlib:
 		r, e := zlib.NewReader(uncompressed)
 		if e != nil {
 			return nil, e
 		}
-		return &ZReader{Type: TypeZlib, ReadCloser: r}, nil
+		return &Reader{Type: TypeZlib, ReadCloser: r}, nil
 	default:
-		return &ZReader{Type: TypeNone, ReadCloser: io.NopCloser(uncompressed)}, nil
+		return &Reader{Type: TypeNone, ReadCloser: io.NopCloser(uncompressed)}, nil
 	}
 }
 
 // Read reads from the appropriate ReadCloser.
-func (r *ZReader) Read(p []byte) (int, error) {
+func (r *Reader) Read(p []byte) (int, error) {
 	return r.ReadCloser.Read(p)
 }
 
-// Close closes the ZReader, and will close the underlying reader if it has one.
-func (r *ZReader) Close() error {
+// Close closes the Reader, and will close the underlying reader if it has one.
+func (r *Reader) Close() error {
 	if e := r.ReadCloser.Close(); e != nil {
 		return e
 	}

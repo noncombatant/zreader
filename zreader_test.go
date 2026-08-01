@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestZReader(t *testing.T) {
+func TestReader(t *testing.T) {
 	expected, e := os.ReadFile("testdata/zreader.txt")
 	assert.Nil(t, e)
 
