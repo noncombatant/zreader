@@ -1,6 +1,6 @@
 module github.com/noncombatant/zreader
 
-go 1.24
+go 1.25
 
 require (
 	github.com/klauspost/compress v1.19.1
