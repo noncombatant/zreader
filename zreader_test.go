@@ -6,7 +6,6 @@ package zreader
 import (
 	"io"
 	"os"
-	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -16,20 +15,25 @@ func TestZReader(t *testing.T) {
 	expected, e := os.ReadFile("testdata/zreader.txt")
 	assert.Nil(t, e)
 
-	zfiles := []string{
-		"testdata/zreader.txt",
-		"testdata/zreader.txt.bz2",
-		"testdata/zreader.txt.gz",
-		"testdata/zreader.txt.lz4",
-		"testdata/zreader.txt.xz",
-		"testdata/zreader.txt.zlib",
+	type testCase struct {
+		Type
+		Pathname string
 	}
-	assert.True(t, sort.IsSorted(sort.StringSlice(zfiles)), "zfiles should be sorted")
 
-	for _, zf := range zfiles {
-		t.Run(zf, func(t *testing.T) {
-			reader, e := Open(zf)
+	cases := []testCase{
+		{Type: TypeNone, Pathname: "testdata/zreader.txt"},
+		{Type: TypeBzip2, Pathname: "testdata/zreader.txt.bz2"},
+		{Type: TypeGzip, Pathname: "testdata/zreader.txt.gz"},
+		{Type: TypeLZ4Frame, Pathname: "testdata/zreader.txt.lz4"},
+		{Type: TypeXZ, Pathname: "testdata/zreader.txt.xz"},
+		{Type: TypeZlib, Pathname: "testdata/zreader.txt.zlib"},
+	}
+
+	for _, c := range cases {
+		t.Run(c.Pathname, func(t *testing.T) {
+			reader, e := Open(c.Pathname)
 			assert.Nil(t, e)
+			assert.Equal(t, c.Type, reader.Type)
 			bytes, e := io.ReadAll(reader)
 			assert.Nil(t, e)
 			assert.Equal(t, expected, bytes)

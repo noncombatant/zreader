@@ -20,35 +20,31 @@ import (
 	"github.com/ulikunitz/xz"
 )
 
-// TODO: Support compress/{flate,lzw}.
+// TODO: Support compress/{flate,lzw}, brotli.
 //
 // TODO: Consider using more or all of the klauspost implementations.
 //
 // TODO: Add an OpenWithType.
-//
-// TODO: Make ZType public, and test for it being correct.
 
-type zType int
+type Type int
 
-// TODO: Rename these TypeFoo.
 const (
-	zNone zType = iota
-	zBzip2
-	zGzip
-	zZip
-	zZstd
-	zZlib
-	zLZ4Frame
-	zLZ4Block // TODO: Can't use a magic byte approach for this
-	zXZ
+	TypeNone Type = iota
+	TypeBzip2
+	TypeGzip
+	TypeZip
+	TypeZstd
+	TypeZlib
+	TypeLZ4Frame
+	TypeLZ4Block // TODO: Can't use a magic byte approach for this
+	TypeXZ
 )
 
 // ZReader is an [io.ReadCloser] that decompresses and reads compressed files.
-//
-// It currently supports bzip2, gzip, and zstd.
+// It supports the compression formats enumerated by [Type].
 type ZReader struct {
-	zType
-	decompressor io.ReadCloser
+	Type
+	io.ReadCloser
 }
 
 // Open opens pathname and returns an appropriate ZReader. See [NewReader] for
@@ -68,8 +64,8 @@ func Open(pathname string) (*ZReader, error) {
 }
 
 // NewReader returns a ZReader for the given io.ReadCloser. It selects a
-// decompressor based on the first few bytes of data. If it does not have a
-// decompressor to match the bytes, subsequent calls to [Read] will return the
+// ReadCloser based on the first few bytes of data. If it does not have a
+// ReadCloser to match the bytes, subsequent calls to [Read] will return the
 // raw bytes of the reader. (That might, or might not, be what you want.)
 func NewReader(r io.Reader) (*ZReader, error) {
 	return fromBufferedReader(bufio.NewReader(r))
@@ -82,57 +78,56 @@ func fromBufferedReader(uncompressed *bufio.Reader) (*ZReader, error) {
 	magicBlock, e := uncompressed.Peek(magicBytePrefixSize)
 	if e != nil {
 		if errors.Is(e, io.EOF) {
-			return &ZReader{zType: zNone, decompressor: io.NopCloser(uncompressed)}, nil
+			return &ZReader{Type: TypeNone, ReadCloser: io.NopCloser(uncompressed)}, nil
 		}
 		return nil, e
 	}
 
-	switch zTypeFromBytes(magicBlock) {
-	case zBzip2:
-		return &ZReader{zType: zBzip2, decompressor: io.NopCloser(bzip2.NewReader(uncompressed))}, nil
-	case zGzip:
+	switch TypeFromBytes(magicBlock) {
+	case TypeBzip2:
+		return &ZReader{Type: TypeBzip2, ReadCloser: io.NopCloser(bzip2.NewReader(uncompressed))}, nil
+	case TypeGzip:
 		r, e := gzip.NewReader(uncompressed)
 		if e != nil {
 			return nil, e
 		}
-
-		return &ZReader{zType: zGzip, decompressor: r}, nil
-	case zZip:
+		return &ZReader{Type: TypeGzip, ReadCloser: r}, nil
+	case TypeZip:
 		// TODO
-		return &ZReader{zType: zZip, decompressor: io.NopCloser(uncompressed)}, nil
-	case zZstd:
+		return &ZReader{Type: TypeZip, ReadCloser: io.NopCloser(uncompressed)}, nil
+	case TypeZstd:
 		d, e := zstd.NewReader(uncompressed)
 		if e != nil {
 			return nil, e
 		}
-		return &ZReader{zType: zZstd, decompressor: io.NopCloser(d)}, nil
-	case zLZ4Frame:
-		return &ZReader{zType: zLZ4Frame, decompressor: io.NopCloser(lz4.NewReader(uncompressed))}, nil
-	case zXZ:
+		return &ZReader{Type: TypeZstd, ReadCloser: io.NopCloser(d)}, nil
+	case TypeLZ4Frame:
+		return &ZReader{Type: TypeLZ4Frame, ReadCloser: io.NopCloser(lz4.NewReader(uncompressed))}, nil
+	case TypeXZ:
 		r, e := xz.NewReader(uncompressed)
 		if e != nil {
 			return nil, e
 		}
-		return &ZReader{zType: zXZ, decompressor: io.NopCloser(r)}, nil
-	case zZlib:
+		return &ZReader{Type: TypeXZ, ReadCloser: io.NopCloser(r)}, nil
+	case TypeZlib:
 		r, e := zlib.NewReader(uncompressed)
 		if e != nil {
 			return nil, e
 		}
-		return &ZReader{zType: zZlib, decompressor: r}, nil
+		return &ZReader{Type: TypeZlib, ReadCloser: r}, nil
 	default:
-		return &ZReader{zType: zNone, decompressor: io.NopCloser(uncompressed)}, nil
+		return &ZReader{Type: TypeNone, ReadCloser: io.NopCloser(uncompressed)}, nil
 	}
 }
 
-// Read reads from the appropriate decompressor.
+// Read reads from the appropriate ReadCloser.
 func (r *ZReader) Read(p []byte) (int, error) {
-	return r.decompressor.Read(p)
+	return r.ReadCloser.Read(p)
 }
 
 // Close closes the ZReader, and will close the underlying reader if it has one.
 func (r *ZReader) Close() error {
-	if e := r.decompressor.Close(); e != nil {
+	if e := r.ReadCloser.Close(); e != nil {
 		return e
 	}
 	return nil
@@ -160,22 +155,22 @@ var (
 	magicZlibBestCompPreset  = []byte{0x78, 0xf9}
 )
 
-func zTypeFromBytes(magic []byte) zType {
+func TypeFromBytes(magic []byte) Type {
 	switch {
 	case bytes.HasPrefix(magic, magicBzip2):
-		return zBzip2
+		return TypeBzip2
 	case bytes.HasPrefix(magic, magicGzip):
-		return zGzip
+		return TypeGzip
 	case bytes.HasPrefix(magic, magicZip),
 		bytes.HasPrefix(magic, magicZipEmptyArchive),
 		bytes.HasPrefix(magic, magicZipSpannedArchive):
-		return zZip
+		return TypeZip
 	case bytes.HasPrefix(magic, magicZstd):
-		return zZstd
+		return TypeZstd
 	case bytes.HasPrefix(magic, magicLZ4Frame):
-		return zLZ4Frame
+		return TypeLZ4Frame
 	case bytes.HasPrefix(magic, magicXZ):
-		return zXZ
+		return TypeXZ
 	case bytes.HasPrefix(magic, magicZlibNoComp),
 		bytes.HasPrefix(magic, magicZlibBestSpeed),
 		bytes.HasPrefix(magic, magicZlibDefault),
@@ -184,8 +179,8 @@ func zTypeFromBytes(magic []byte) zType {
 		bytes.HasPrefix(magic, magicZlibBestSpeedPreset),
 		bytes.HasPrefix(magic, magicZlibDefaultPreset),
 		bytes.HasPrefix(magic, magicZlibBestCompPreset):
-		return zZlib
+		return TypeZlib
 	default:
-		return zNone
+		return TypeNone
 	}
 }
